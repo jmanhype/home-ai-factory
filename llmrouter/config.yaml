@@ -1,0 +1,95 @@
+# LLMRouter Configuration
+# Defines available models and routing rules
+
+models:
+  # Local models (FREE - runs on your 3090)
+  local:
+    - name: qwen2.5-coder:7b
+      provider: ollama
+      capabilities: [coding, general]
+      context_window: 32768
+      speed: fast
+      quality: good
+      cost: free
+
+    - name: qwen2.5-coder:32b-instruct-q4_K_M
+      provider: ollama
+      capabilities: [coding, reasoning]
+      context_window: 32768
+      speed: medium
+      quality: excellent
+      cost: free
+
+  # Claude models (via Max subscription - effectively FREE)
+  claude:
+    - name: claude-opus-4-5-20251101
+      provider: anthropic
+      capabilities: [reasoning, coding, analysis, writing]
+      context_window: 200000
+      speed: medium
+      quality: best
+      cost: subscription  # Claude Max
+
+    - name: claude-sonnet-4-20250514
+      provider: anthropic
+      capabilities: [coding, general, writing]
+      context_window: 200000
+      speed: fast
+      quality: excellent
+      cost: subscription  # Claude Max
+
+  # OpenAI models (via Pro subscription - effectively FREE)
+  openai:
+    - name: gpt-4o
+      provider: openai
+      capabilities: [multimodal, coding, general]
+      context_window: 128000
+      speed: fast
+      quality: excellent
+      cost: subscription  # GPT Pro
+
+    - name: gpt-4o-mini
+      provider: openai
+      capabilities: [general, coding]
+      context_window: 128000
+      speed: very_fast
+      quality: good
+      cost: subscription  # GPT Pro
+
+    - name: o1
+      provider: openai
+      capabilities: [reasoning, math, logic]
+      context_window: 128000
+      speed: slow
+      quality: best_reasoning
+      cost: subscription  # GPT Pro
+
+# Routing rules
+routing:
+  # Prefer local for simple tasks
+  prefer_local_for:
+    - simple_coding
+    - code_completion
+    - basic_questions
+    - formatting
+
+  # Use Claude Opus for complex reasoning
+  use_opus_for:
+    - architecture_design
+    - complex_analysis
+    - strategic_planning
+    - code_review
+    - debugging_complex
+
+  # Use GPT-4o for multimodal
+  use_gpt4o_for:
+    - image_analysis
+    - screenshot_reading
+    - diagram_understanding
+    - visual_tasks
+
+  # Use o1 for specialized reasoning
+  use_o1_for:
+    - mathematical_proofs
+    - logic_puzzles
+    - algorithmic_problems

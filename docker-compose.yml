@@ -1,6 +1,11 @@
 # AI Factory Stack
 # Deploy on 3090 PC (10.0.0.3) via WireGuard
-# Components: Postgres+pgvector, Letta, Embeddings
+# Components: Postgres+pgvector+AGE, Letta, LLMRouter, Embeddings
+#
+# Subscription Integration:
+# - Claude Max: Routes through Letta proxy (port 8283)
+# - GPT Pro: Routes through LiteLLM proxy (port 4000)
+# - Local Ollama: Free inference for simple tasks
 
 services:
   # ===========================================
@@ -68,6 +73,29 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # ===========================================
+  # LLMROUTER - Intelligent Model Selection
+  # Analyzes queries and routes to optimal model
+  # From: https://github.com/ulab-uiuc/LLMRouter
+  # ===========================================
+  llmrouter:
+    build:
+      context: ./llmrouter
+      dockerfile: Dockerfile
+    container_name: llmrouter
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - LITELLM_BASE_URL=http://litellm:4000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - full  # Only starts with --profile full
 
   # ===========================================
   # COCOINDEX - Data Ingestion Pipeline (optional)
