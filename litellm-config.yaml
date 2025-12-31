@@ -1,0 +1,62 @@
+# LiteLLM Proxy Configuration
+# Routes requests to optimal model based on task
+
+model_list:
+  # Local Ollama models (FREE - use your 3090)
+  - model_name: local-fast
+    litellm_params:
+      model: ollama/qwen2.5-coder:7b
+      api_base: http://host.docker.internal:11434
+    model_info:
+      description: "Fast local model for simple tasks"
+
+  - model_name: local-code
+    litellm_params:
+      model: ollama/qwen2.5-coder:32b-instruct-q4_K_M
+      api_base: http://host.docker.internal:11434
+    model_info:
+      description: "Large local coding model"
+
+  # Claude models (via API)
+  - model_name: claude-opus
+    litellm_params:
+      model: claude-opus-4-5-20251101
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Best reasoning, complex tasks"
+
+  - model_name: claude-sonnet
+    litellm_params:
+      model: claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      description: "Balanced performance/cost"
+
+  # OpenAI models (via API)
+  - model_name: gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "Fast, multimodal"
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      description: "Cheap and fast"
+
+# Router settings
+router_settings:
+  routing_strategy: least-busy  # or: simple-shuffle, latency-based-routing
+  num_retries: 2
+  timeout: 120
+
+# General settings
+general_settings:
+  master_key: sk-ai-factory-master-key  # Change this!
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false

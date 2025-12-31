@@ -1,0 +1,28 @@
+# Environment files (contain secrets)
+.env
+*.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+logs/
+
+# Docker volumes (if accidentally copied)
+data/
+volumes/

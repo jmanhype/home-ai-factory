@@ -1,0 +1,127 @@
+# AI Factory Stack
+# Deploy on 3090 PC (10.0.0.3) via WireGuard
+# Components: Postgres+pgvector, Letta, Embeddings
+
+services:
+  # ===========================================
+  # POSTGRES + PGVECTOR - Vector Database
+  # ===========================================
+  postgres-vector:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-vector
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: vectorgraph
+      POSTGRES_PASSWORD: vectorgraph_secret
+      POSTGRES_DB: ai_factory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vectorgraph -d ai_factory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # TEXT EMBEDDING SERVICE (for VectorGraph)
+  # Generates embeddings locally on GPU
+  # ===========================================
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:1.5
+    container_name: embeddings
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - MODEL_ID=BAAI/bge-base-en-v1.5
+    volumes:
+      - embeddings_cache:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ===========================================
+  # LETTA SERVER - Persistent Memory
+  # Stores agent state across sessions
+  # ===========================================
+  letta-server:
+    image: letta/letta:latest
+    container_name: letta-server
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8283:8283"
+    environment:
+      - LETTA_PG_URI=postgresql://vectorgraph:vectorgraph_secret@postgres-vector:5432/ai_factory
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - letta_data:/root/.letta
+    depends_on:
+      postgres-vector:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ===========================================
+  # COCOINDEX - Data Ingestion Pipeline (optional)
+  # Install via pip instead: pip install cocoindex
+  # ===========================================
+  # cocoindex:
+  #   Note: CocoIndex is best run as a CLI tool, not a service
+  #   Install: pip install cocoindex
+  #   Run: cocoindex run --config pipeline.yaml
+
+  # ===========================================
+  # QDRANT - Alternative Vector DB (optional)
+  # If you want dedicated vector search
+  # ===========================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    profiles:
+      - full  # Only starts with --profile full
+
+  # ===========================================
+  # LITELLM PROXY - Model Routing (optional)
+  # Unified API for multiple LLM providers
+  # ===========================================
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - OLLAMA_API_BASE=http://host.docker.internal:11434
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml
+    command: ["--config", "/app/config.yaml"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - full  # Only starts with --profile full
+
+volumes:
+  postgres_data:
+  embeddings_cache:
+  letta_data:
+  qdrant_data:
+
+networks:
+  default:
+    name: ai-factory-network

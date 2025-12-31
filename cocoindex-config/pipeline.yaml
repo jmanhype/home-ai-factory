@@ -1,0 +1,61 @@
+# CocoIndex Pipeline Configuration
+# Indexes your code and documents for RAG
+
+name: ai-factory-index
+
+# Data sources to watch
+sources:
+  - name: projects
+    type: local_files
+    path: /data/projects
+    patterns:
+      - "**/*.py"
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.md"
+      - "**/*.txt"
+      - "**/*.yaml"
+      - "**/*.json"
+    exclude:
+      - "**/node_modules/**"
+      - "**/.git/**"
+      - "**/venv/**"
+      - "**/__pycache__/**"
+      - "**/dist/**"
+      - "**/build/**"
+
+# Processing pipeline
+transformations:
+  # Split documents into chunks
+  - name: chunker
+    type: text_splitter
+    config:
+      chunk_size: 1000
+      chunk_overlap: 200
+
+  # Generate embeddings
+  - name: embedder
+    type: embeddings
+    config:
+      model: api
+      api_url: http://embeddings:80/embed
+      batch_size: 32
+
+# Where to store the index
+targets:
+  - name: vectorgraph
+    type: postgres
+    config:
+      connection_string: ${COCOINDEX_DATABASE_URL}
+      table_name: document_chunks
+      vector_column: embedding
+      metadata_columns:
+        - source_file
+        - chunk_index
+        - content
+
+# Indexing settings
+settings:
+  incremental: true  # Only re-index changed files
+  watch: true        # Watch for file changes
+  parallel_workers: 4
