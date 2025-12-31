@@ -54,9 +54,17 @@ services:
   # ===========================================
   # LETTA SERVER - Persistent Memory
   # Stores agent state across sessions
+  #
+  # SUBSCRIPTION INTEGRATION:
+  # This custom image patches Letta to use FREE models for memory
+  # operations while passing YOUR subscription credentials through
+  # for main Claude Code inference.
   # ===========================================
   letta-server:
-    image: letta/letta:latest
+    build:
+      context: ./letta-patches
+      dockerfile: Dockerfile
+    image: ai-factory/letta-subscription:latest
     container_name: letta-server
     restart: unless-stopped
     ports:
@@ -64,6 +72,8 @@ services:
     environment:
       - LETTA_PG_URI=postgresql://vectorgraph:vectorgraph_secret@postgres-vector:5432/ai_factory
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # These are optional - the proxy passes YOUR subscription auth through!
+      # Only needed if you want to use API keys as fallback
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:

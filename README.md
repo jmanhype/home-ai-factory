@@ -199,29 +199,57 @@ psql postgresql://vectorgraph:vectorgraph_secret@10.0.0.3:5432/ai_factory -c "SE
 
 ## Using Your Subscriptions
 
+### How It Works (The Magic)
+
+We patched Letta to work with your **existing subscriptions** instead of requiring separate API keys:
+
+```
+Claude Code (authenticated with your Max subscription)
+    │
+    │  OAuth token in x-api-key header
+    ▼
+Your Self-Hosted Letta (port 8283)
+    │
+    ├─► Memory Operations: Uses FREE models (letta-free)
+    │   - Agent creation, embeddings, background processing
+    │   - Costs you nothing!
+    │
+    └─► Main Inference: Passes YOUR auth headers through
+        │
+        ▼
+    https://api.anthropic.com
+        │
+        └─► Validates your Max subscription token
+            └─► Request processed under YOUR subscription (unlimited!)
+```
+
+The key insight: Letta's proxy just forwards your authentication headers. We patched the memory agent to use free models so you don't need API keys.
+
 ### Claude Max (Unlimited Opus 4.5)
 
-The Letta proxy routes through your Claude Max subscription:
-
 ```bash
-# This uses your Max subscription (no per-token cost!)
-ANTHROPIC_BASE_URL=http://localhost:8283/v1/anthropic claude
-
-# Or in ~/.zshrc:
+# Point Claude Code to your self-hosted Letta
 export ANTHROPIC_BASE_URL=http://localhost:8283/v1/anthropic
+
+# Run Claude Code normally - it passes your subscription through!
+claude
 ```
+
+Your Max subscription handles ALL inference. Letta just adds persistent memory for free.
 
 ### GPT Pro (Unlimited GPT-4o, o1)
 
-Via LiteLLM proxy on port 4000:
+For OpenAI, you'd need to create a similar proxy (coming soon) or use LiteLLM:
 
 ```bash
-# Query GPT-4o through the proxy
+# Query GPT-4o through LiteLLM proxy
 curl http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-ai-factory-master-key" \
   -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
+
+Note: GPT Pro subscription passthrough requires additional work (OpenAI uses different auth flow).
 
 ### Intelligent Routing (Best of Both)
 
