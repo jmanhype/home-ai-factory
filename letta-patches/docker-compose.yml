@@ -59,7 +59,8 @@ services:
     environment:
       # Point to claude-code-proxy for sleeptime agents
       - ANTHROPIC_API_BASE=http://claude-proxy:42069
-      - ANTHROPIC_API_KEY=not-needed-proxy-handles-auth
+      # Use a valid-looking dummy key - proxy replaces it with real auth
+      - ANTHROPIC_API_KEY=sk-ant-api03-proxy-handles-auth-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
       # Ollama for embeddings (runs on Windows host)
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
     depends_on:

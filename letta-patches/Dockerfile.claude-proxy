@@ -30,7 +30,8 @@ RUN sed -i 's|"authorization",||g' /app/letta/server/rest_api/proxy_helpers.py
 # Environment: Point Anthropic to claude-code-proxy on host
 # The proxy reads ~/.claude/.credentials.json and handles auth
 ENV ANTHROPIC_API_BASE="http://host.docker.internal:42069"
-ENV ANTHROPIC_API_KEY="not-needed-proxy-handles-auth"
+# Use a valid-looking dummy key - proxy replaces it with real auth
+ENV ANTHROPIC_API_KEY="sk-ant-api03-proxy-handles-auth-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 # For embeddings via Ollama
 ENV OLLAMA_BASE_URL="http://host.docker.internal:11434"
