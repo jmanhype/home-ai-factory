@@ -87,6 +87,10 @@ Persistent memory layer for Claude Code. The key innovation:
 
 Usage:
 ```bash
+# Start the tunnel first
+./letta-tunnel.sh
+
+# Then run Claude Code with Letta memory proxy
 ANTHROPIC_BASE_URL=http://localhost:8283/v1/anthropic claude
 ```
 
@@ -228,10 +232,14 @@ The key insight: Letta's proxy just forwards your authentication headers. We pat
 ### Claude Max (Unlimited Opus 4.5)
 
 ```bash
-# Point Claude Code to your self-hosted Letta
-export ANTHROPIC_BASE_URL=http://localhost:8283/v1/anthropic
+# 1. Start the tunnel to your self-hosted Letta
+./letta-tunnel.sh
 
-# Run Claude Code normally - it passes your subscription through!
+# 2. Run Claude Code with Letta memory proxy
+ANTHROPIC_BASE_URL=http://localhost:8283/v1/anthropic claude
+
+# Or export for the session
+export ANTHROPIC_BASE_URL=http://localhost:8283/v1/anthropic
 claude
 ```
 

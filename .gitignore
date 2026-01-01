@@ -26,3 +26,5 @@ logs/
 # Docker volumes (if accidentally copied)
 data/
 volumes/
+letta-patched-v4.tar.gz
+letta-patched-v4.tar.gz

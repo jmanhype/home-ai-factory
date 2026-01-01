@@ -1,0 +1,73 @@
+# Letta Memory Server with Claude Max Subscription Support
+#
+# Uses YOUR $200/month Claude Max subscription for everything:
+#   - Main Claude Code requests (via auth header passthrough)
+#   - Sleeptime memory agents (via claude-code-proxy)
+#
+# Prerequisites:
+#   - Claude Code installed and logged in on host
+#   - Ollama running on host (for embeddings): ollama pull mxbai-embed-large
+#   - Docker Desktop with WSL2 backend
+#
+# Usage:
+#   docker-compose up -d
+
+version: '3.8'
+
+services:
+  # claude-code-proxy: Exposes your Claude subscription as an API
+  claude-proxy:
+    image: node:20-slim
+    container_name: claude-code-proxy
+    working_dir: /app
+    command: >
+      sh -c "
+        if [ ! -d /app/node_modules ]; then
+          echo 'Installing dependencies...' &&
+          npm install;
+        fi &&
+        echo 'Starting claude-code-proxy on port 42069...' &&
+        npm start
+      "
+    ports:
+      - "42069:42069"
+    volumes:
+      # Mount the proxy code (clone it first!)
+      - ./claude-code-proxy:/app
+      # Mount Claude credentials from Windows user profile
+      # On WSL2: /mnt/c/Users/YOUR_USERNAME/.claude
+      - ${CLAUDE_CREDENTIALS_PATH:-~/.claude}:/root/.claude:ro
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:42069/v1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Letta Memory Server
+  letta:
+    build:
+      context: .
+      dockerfile: Dockerfile.claude-proxy
+    container_name: letta-memory
+    ports:
+      - "8283:8283"
+    volumes:
+      - letta_data:/root/.letta
+    environment:
+      # Point to claude-code-proxy for sleeptime agents
+      - ANTHROPIC_API_BASE=http://claude-proxy:42069
+      - ANTHROPIC_API_KEY=not-needed-proxy-handles-auth
+      # Ollama for embeddings (runs on Windows host)
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    depends_on:
+      - claude-proxy
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  letta_data:
+    name: letta_memory_data

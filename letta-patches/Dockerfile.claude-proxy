@@ -1,0 +1,47 @@
+# Letta image configured to use claude-code-proxy for memory operations
+# This uses YOUR Claude Max subscription for everything - no API keys needed!
+#
+# Prerequisites:
+#   1. Run claude-code-proxy on host (exposes subscription at localhost:42069)
+#   2. Start this container with docker-compose
+#
+# How it works:
+#   - Main requests: Claude Code -> Letta -> Anthropic (your auth header forwarded)
+#   - Sleeptime agents: Letta -> claude-code-proxy -> Anthropic (your credentials.json)
+
+FROM letta/letta:latest
+
+# PATCH 1: Configure memory operations to use Claude via ANTHROPIC_BASE_URL
+# Uses base anthropic provider, but ANTHROPIC_BASE_URL env var redirects to claude-code-proxy
+# Use Ollama for embeddings (no auth needed)
+RUN sed -i 's|model="anthropic/claude-sonnet-4-5-20250929"|model="anthropic/claude-sonnet-4-20250514"|g' \
+    /app/letta/server/rest_api/proxy_helpers.py && \
+    sed -i 's|embedding="openai/text-embedding-ada-002"|embedding="ollama/mxbai-embed-large:latest"|g' \
+    /app/letta/server/rest_api/proxy_helpers.py
+
+# PATCH 1b: Fix OllamaProvider to have default prompt formatter
+COPY fix_ollama_provider.py /tmp/
+RUN python3 /tmp/fix_ollama_provider.py
+
+# PATCH 2: Forward the 'authorization' header for Claude Max subscription passthrough
+# Claude Code sends OAuth token as 'authorization: Bearer <token>' but Letta drops it.
+RUN sed -i 's|"authorization",||g' /app/letta/server/rest_api/proxy_helpers.py
+
+# Environment: Point Anthropic to claude-code-proxy on host
+# The proxy reads ~/.claude/.credentials.json and handles auth
+ENV ANTHROPIC_API_BASE="http://host.docker.internal:42069"
+ENV ANTHROPIC_API_KEY="not-needed-proxy-handles-auth"
+
+# For embeddings via Ollama
+ENV OLLAMA_BASE_URL="http://host.docker.internal:11434"
+
+# Verify patches
+RUN grep 'model="anthropic/claude-sonnet-4-20250514"' /app/letta/server/rest_api/proxy_helpers.py && \
+    ! grep '"authorization",' /app/letta/server/rest_api/proxy_helpers.py && \
+    echo "All patches applied successfully!"
+
+# The full flow:
+# 1. claude-code-proxy runs on Windows/WSL, reading your credentials.json
+# 2. Letta's sleeptime agents call http://host.docker.internal:42069 (the proxy)
+# 3. The proxy adds your OAuth headers and forwards to Anthropic
+# 4. You use YOUR subscription for everything - $0 extra!
